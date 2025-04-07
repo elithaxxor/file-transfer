@@ -171,3 +171,96 @@ A big thank you to everyone who has supported this project! 🤗 If you’ve fou
 
 ### 🚀 **Happy Transferring!** 🚀
 Feel free to get in touch for support, suggestions, or collaboration opportunities! Together, let’s make file sharing hassle-free and secure. 😊
+
+# File Transfer Client - Setup Instructions
+
+This package contains a complete client-server solution for file transfers:
+1. A React-based GUI client
+2. A Node.js server implementation
+
+## Server Setup
+
+### Prerequisites
+- Node.js (v14 or newer)
+- npm (v6 or newer)
+
+### Installation
+
+1. Create a new directory for the server:
+```
+mkdir file-transfer-server
+cd file-transfer-server
+```
+
+2. Initialize a new Node.js project:
+```
+npm init -y
+```
+
+3. Install dependencies:
+```
+npm install express cors archiver
+```
+
+4. Create a file named `server.js` and copy the content from the "Server Implementation" artifact.
+
+5. Create a directory for storing files:
+```
+mkdir files
+```
+
+6. Start the server:
+```
+node server.js
+```
+
+The server will run on port 12345 by default. You can change this by setting the PORT environment variable.
+Some test files will be automatically created in the "files" directory.
+
+## Client Setup
+
+### Prerequisites
+- Node.js (v14 or newer)
+- npm (v6 or newer)
+
+### Installation
+
+1. Create a new React app:
+```
+npx create-react-app file-transfer-client
+cd file-transfer-client
+```
+
+2. Replace the content of `src/index.js` with the content from the "File Transfer Client" artifact.
+
+3. Start the client:
+```
+npm start
+```
+
+The client will open in your browser at `http://localhost:3000`.
+
+## Using the Client
+
+1. Enter the server address (default: localhost) and port (default: 12345) in the connection panel.
+2. Click "Connect" to establish a connection to the server.
+3. The file list will show all available files on the server.
+4. Select files by clicking on them (or use "Select All").
+5. Click "Get Selected Files" to download the selected files, or "Get All Files" to download all files.
+6. Enter a filename for the archive when prompted.
+7. The downloaded archive will be saved to your downloads folder.
+
+## Protocol Details
+
+The client and server communicate using a simple text-based protocol:
+
+- `LIST`: Returns a list of available files, one per line.
+- `GETALL`: Returns all files as a tar.gz archive.
+- `GET <filenames>`: Returns specified files as a tar.gz archive.
+- `QUIT`: Disconnects from the server.
+
+## Troubleshooting
+
+- If you can't connect to the server, check that the server is running and that the firewall allows connections on the specified port.
+- If you get an "Invalid command" error, check that you're using one of the supported commands (LIST, GETALL, GET, QUIT).
+- If you get a "Files not found" error, check that the files you're requesting exist on the server.
