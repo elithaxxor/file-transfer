@@ -5,9 +5,7 @@
 ![Version](https://img.shields.io/badge/version-2.0.0-blue.svg?cacheSeconds=2592000)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
-
 <img src="https://i.imgur.com/8MmEgwZ.png" alt="File Transfer System Logo" width="250"/>
-
 **A modern, high-performance file transfer solution with real-time updates and advanced features.**
 
 [Key Features](#key-features) • [Screenshots](#screenshots) • [Installation](#installation) • [Usage](#usage) • [API](#api) • [Changelog](#changelog)
