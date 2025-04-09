@@ -1,5 +1,5 @@
 
-```markdown
+
 # 📁 Real-Time File Transfer Server
 
 <div align="center">
@@ -16,7 +16,7 @@
 ![System Architecture](https://via.placeholder.com/1200x400/0d1117/38b0de?text=Server+Architecture+Diagram)
 
 ---
-
+```markdown
 ## 📋 Table of Contents
 
 - [✨ Features](#-features)
