@@ -1,7 +1,10 @@
 ```markdown
-# Enhanced File Transfer Client v2.0.1
+# Enhanced File Transfer Client v2.0.1:
 
 ## Overview
+
+When the server starts for the first time, it automatically checks if the "files" directory exists and is empty. If it is, the server creates the example structure shown above with sample test files for testing purposes. This allows users to immediately see and interact with files when they connect to the server.
+The server is designed to operate only within this directory and its subdirectories for security reasons. All file paths used in commands are relative to this root "files" directory.
 
 This repository contains the source code for the Enhanced File Transfer Client, a React-based application designed to manage file transfers with a server. The client application includes features such as directory navigation, file metadata display, search functionality, and real-time updates via WebSocket.
 
