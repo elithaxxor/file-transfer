@@ -69,59 +69,7 @@ app.use(express.raw({ limit: '50mb', type: 'application/octet-stream' }));
 const setupDirectories = () => {
   const dirs = [
     FILES_DIR,
-  , 'documents', `document_${i}.txt`),
-      `This is a sample document file ${i}.\n`.repeat(5)
-    );
-    
-    fs.writeFileSync(
-      path.join(FILES_DIR, 'images', `image_${i}.txt`),
-      `This is a sample image file ${i} (pretending to be binary).\n`.repeat(5)
-    );
-    
-    fs.writeFileSync(
-      path.join(FILES_DIR, 'data', `data_${i}.json`),
-      JSON.stringify({ id: i, name: `Sample data ${i}`, values: Array.from({ length: 5 }, (_, j) => j * i) }, null, 2)
-    );
-  }
-  
-  logger.info('Test files and directories created successfully.');
-}
-
-// Graceful shutdown handling
-const gracefulShutdown = () => {
-  logger.info('Received shutdown signal. Closing server gracefully...');
-  
-  // Close WebSocket server
-  wss.close(() => {
-    logger.info('WebSocket server closed.');
-    
-    // Close HTTP server
-    server.close(() => {
-      logger.info('HTTP server closed.');
-      process.exit(0);
-    });
-    
-    // Force shutdown after 10 seconds if still running
-    setTimeout(() => {
-      logger.error('Could not close connections in time, forcefully shutting down');
-      process.exit(1);
-    }, 10000);
-  });
-};
-
-// Listen for termination signals
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
-
-// Create test files on startup
-createTestFiles();
-
-// Start the server
-server.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
-  logger.info(`Serving files from: ${FILES_DIR}`);
-  logger.info(`WebSocket server started`);
-});, '.versions'),
+    path.join(FILES_DIR, '.versions'),
     path.join(FILES_DIR, '.cache')
   ];
   
@@ -958,6 +906,7 @@ function createTestFiles() {
   // Check if there are any files/directories
   const entries = fs.readdirSync(FILES_DIR);
   if (entries.filter(entry => !entry.startsWith('.')).length > 0) {
+    logger.info('Found existing files, skipping test file creation');
     return; // Skip if there are already files
   }
   
@@ -966,7 +915,9 @@ function createTestFiles() {
   // Create directories
   const dirs = ['documents', 'images', 'data'];
   dirs.forEach(dir => {
-    fs.mkdirSync(path.join(FILES_DIR, dir), { recursive: true });
+    const dirPath = path.join(FILES_DIR, dir);
+    fs.mkdirSync(dirPath, { recursive: true });
+    logger.info(`Created directory: ${dirPath}`);
   });
   
   // Create text files
@@ -975,9 +926,76 @@ function createTestFiles() {
       path.join(FILES_DIR, `test_file_${i}.txt`),
       `This is test file ${i} with some sample content.\n`.repeat(10)
     );
+    
+    fs.writeFileSync(
+      path.join(FILES_DIR, 'documents', `document_${i}.txt`),
+      `This is a sample document file ${i}.\n`.repeat(5)
+    );
+    
+    fs.writeFileSync(
+      path.join(FILES_DIR, 'images', `image_${i}.txt`),
+      `This is a sample image file ${i} (pretending to be binary).\n`.repeat(5)
+    );
+    
+    fs.writeFileSync(
+      path.join(FILES_DIR, 'data', `data_${i}.json`),
+      JSON.stringify({ id: i, name: `Sample data ${i}`, values: Array.from({ length: 5 }, (_, j) => j * i) }, null, 2)
+    );
   }
   
-  // Create files in subdirectories
+  // Create a nested directory structure for testing
+  const nestedDir = path.join(FILES_DIR, 'documents', 'reports');
+  fs.mkdirSync(nestedDir, { recursive: true });
+  
+  // Create files in nested directory
   for (let i = 1; i <= 2; i++) {
     fs.writeFileSync(
-      path.join(FILES_DIR
+      path.join(nestedDir, `report_${i}.txt`),
+      `This is a nested report file ${i}.\n`.repeat(3)
+    );
+  }
+  
+  // Create a large file for testing streaming
+  fs.writeFileSync(
+    path.join(FILES_DIR, 'large_file.dat'),
+    Buffer.alloc(1024 * 1024 * 5, 'A') // 5MB file
+  );
+  
+  logger.info('Test files and directories created successfully.');
+}
+
+// Graceful shutdown handling
+const gracefulShutdown = () => {
+  logger.info('Received shutdown signal. Closing server gracefully...');
+  
+  // Close WebSocket server
+  wss.close(() => {
+    logger.info('WebSocket server closed.');
+    
+    // Close HTTP server
+    server.close(() => {
+      logger.info('HTTP server closed.');
+      process.exit(0);
+    });
+    
+    // Force shutdown after 10 seconds if still running
+    setTimeout(() => {
+      logger.error('Could not close connections in time, forcefully shutting down');
+      process.exit(1);
+    }, 10000);
+  });
+};
+
+// Listen for termination signals
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+// Create test files on startup
+createTestFiles();
+
+// Start the server
+server.listen(PORT, () => {
+  logger.info(`Server running on port ${PORT}`);
+  logger.info(`Serving files from: ${FILES_DIR}`);
+  logger.info(`WebSocket server started`);
+});
