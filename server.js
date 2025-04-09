@@ -5,6 +5,55 @@ const path = require('path');
 const archiver = require('archiver');
 const { exec } = require('child_process');
 
+/*# File Transfer Client - Setup Instructions
+
+This package contains a complete client-server solution for file transfers:
+1. A React-based GUI client
+2. A Node.js server implementation
+
+## Server Setup
+### Prerequisites
+- Node.js (v14 or newer)
+- npm (v6 or newer)
+
+### Installation
+
+1. Create a new directory for the server:
+```
+mkdir file-transfer-server
+cd file-transfer-server
+```
+
+2. Initialize a new Node.js project:
+```
+npm init -y
+```
+
+3. Install dependencies:
+```
+npm install express cors archiver
+```
+
+4. Create a file named `server.js` and copy the content from the "Server Implementation" artifact.
+
+5. Create a directory for storing files:
+```
+mkdir files
+```
+
+6. Start the server:
+```
+node server.js
+```.
+The server will run on port 12345 by default. You can change this by setting the PORT environment variable.
+Some test files will be automatically created in the "files" directory.
+
+## Troubleshooting
+
+- If you can't connect to the server, check that the server is running and that the firewall allows connections on the specified port.
+- If you get an "Invalid command" error, check that you're using one of the supported commands (LIST, GETALL, GET, QUIT).
+- If you get a "Files not found" error, check that the files you're requesting exist on the server.
+*/
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 12345;
