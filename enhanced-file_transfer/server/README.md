@@ -1,1 +1,2 @@
-README
+When the server starts for the first time, it automatically checks if the "files" directory exists and is empty. If it is, the server creates the example structure shown above with sample test files for testing purposes. This allows users to immediately see and interact with files when they connect to the server.
+The server is designed to operate only within this directory and its subdirectories for security reasons. All file paths used in commands are relative to this root "files" directory.
