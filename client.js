@@ -15,7 +15,51 @@ function FileTransferClient() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [currentOperation, setCurrentOperation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+/*
 
+## Client Setup
+
+### Prerequisites
+- Node.js (v14 or newer)
+- npm (v6 or newer)
+
+### Installation
+
+1. Create a new React app:
+```
+npx create-react-app file-transfer-client
+cd file-transfer-client
+```
+
+2. Replace the content of `src/index.js` with the content from the "File Transfer Client" artifact.
+
+3. Start the client:
+```
+npm start
+```
+
+The client will open in your browser at `http://localhost:3000`.
+
+## Using the Client
+
+1. Enter the server address (default: localhost) and port (default: 12345) in the connection panel.
+2. Click "Connect" to establish a connection to the server.
+3. The file list will show all available files on the server.
+4. Select files by clicking on them (or use "Select All").
+5. Click "Get Selected Files" to download the selected files, or "Get All Files" to download all files.
+6. Enter a filename for the archive when prompted.
+7. The downloaded archive will be saved to your downloads folder.
+
+## Protocol Details
+
+The client and server communicate using a simple text-based protocol:
+
+- `LIST`: Returns a list of available files, one per line.
+- `GETALL`: Returns all files as a tar.gz archive.
+- `GET <filenames>`: Returns specified files as a tar.gz archive.
+- `QUIT`: Disconnects from the server.
+*/
+  
   // Connect to server
   const connect = async () => {
     if (!server || !port) {
