@@ -85,7 +85,7 @@ const DirectoryTree = ({ files, onSelectFile, selectedPath }) => {
 };
 
 // File metadata panel component
-const FileMetadataPanel = ({ file }) => {
+const FileMetadataPanel = ({ file, onGetVersion }) => {
   if (!file) return <div className="metadata-panel">No file selected</div>;
 
   // Format date
@@ -132,10 +132,12 @@ const FileMetadataPanel = ({ file }) => {
             <td>Modified:</td>
             <td>{formatDate(file.modified)}</td>
           </tr>
-          {file.versions && file.versions.length > 0 && (
+          {file.hash && (
             <tr>
-              <td>Versions:</td>
-              <td>{file.versions.length}</td>
+              <td>MD5 Hash:</td>
+              <td>
+                <span className="hash">{file.hash}</span>
+              </td>
             </tr>
           )}
         </tbody>
@@ -149,6 +151,12 @@ const FileMetadataPanel = ({ file }) => {
               <span>v{version.version}</span>
               <span>{formatDate(version.date)}</span>
               <span>{formatSize(version.size)}</span>
+              <button 
+                className="version-download-btn" 
+                onClick={() => onGetVersion(file.path, version.version)}
+              >
+                Get
+              </button>
             </div>
           ))}
         </div>
@@ -158,7 +166,7 @@ const FileMetadataPanel = ({ file }) => {
 };
 
 // Search component
-const SearchBox = ({ onSearch }) => {
+const SearchBox = ({ onSearch, isSearching }) => {
   const [query, setQuery] = useState('');
   const [searchTimeout, setSearchTimeout] = useState(null);
 
@@ -185,6 +193,134 @@ const SearchBox = ({ onSearch }) => {
         value={query}
         onChange={(e) => handleSearch(e.target.value)}
       />
+      {isSearching && <div className="search-loader"></div>}
+    </div>
+  );
+};
+
+// Breadcrumb navigation component
+const BreadcrumbNav = ({ path, onNavigate }) => {
+  if (!path) return null;
+  
+  const parts = path.split('/');
+  const breadcrumbs = parts.map((part, index) => {
+    const pathToHere = parts.slice(0, index + 1).join('/');
+    return {
+      name: part || 'Home',
+      path: pathToHere
+    };
+  });
+  
+  // Add root item if not already in the path
+  if (parts[0] !== '') {
+    breadcrumbs.unshift({
+      name: 'Home',
+      path: ''
+    });
+  }
+  
+  return (
+    <div className="breadcrumb-nav">
+      {breadcrumbs.map((crumb, index) => (
+        <React.Fragment key={crumb.path}>
+          {index > 0 && <span className="breadcrumb-separator">/</span>}
+          <span 
+            className="breadcrumb-item"
+            onClick={() => onNavigate(crumb.path)}
+          >
+            {crumb.name}
+          </span>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
+// Server health display component
+const ServerHealthPanel = ({ health, onRefreshHealth }) => {
+  if (!health) return null;
+  
+  // Format bytes
+  const formatBytes = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+  
+  // Format uptime
+  const formatUptime = (seconds) => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    return `${days}d ${hours}h ${minutes}m ${secs}s`;
+  };
+  
+  // Calculate memory usage percentage
+  const memoryUsagePercent = Math.round((health.memoryUsage.heapUsed / health.memoryUsage.heapTotal) * 100);
+  
+  // Calculate disk usage percentage
+  const diskUsagePercent = health.diskSpace.total ? 
+    Math.round(((health.diskSpace.total - health.diskSpace.free) / health.diskSpace.total) * 100) : 0;
+  
+  return (
+    <div className="server-health-panel">
+      <div className="health-header">
+        <h3>Server Health</h3>
+        <button className="refresh-btn" onClick={onRefreshHealth}>
+          ⟳
+        </button>
+      </div>
+      
+      <div className="health-info">
+        <div className="health-item">
+          <span>Status:</span>
+          <span className={`status-indicator ${health.status === 'UP' ? 'status-up' : 'status-down'}`}>
+            {health.status}
+          </span>
+        </div>
+        
+        <div className="health-item">
+          <span>Uptime:</span>
+          <span>{formatUptime(health.uptime)}</span>
+        </div>
+        
+        <div className="health-item">
+          <span>Memory Usage:</span>
+          <div className="progress-container">
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{ width: `${memoryUsagePercent}%` }}
+              ></div>
+            </div>
+            <span>{memoryUsagePercent}%</span>
+          </div>
+        </div>
+        
+        <div className="health-item">
+          <span>Disk Space:</span>
+          <div className="progress-container">
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{ width: `${diskUsagePercent}%` }}
+              ></div>
+            </div>
+            <span>{diskUsagePercent}%</span>
+          </div>
+        </div>
+        
+        <div className="health-details">
+          <div>Heap Used: {formatBytes(health.memoryUsage.heapUsed)}</div>
+          <div>Heap Total: {formatBytes(health.memoryUsage.heapTotal)}</div>
+          <div>Free Disk: {formatBytes(health.diskSpace.free)}</div>
+          <div>Total Disk: {formatBytes(health.diskSpace.total)}</div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -222,7 +358,12 @@ function FileTransferClient() {
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  
+  // Server health
+  const [serverHealth, setServerHealth] = useState(null);
+  const [showServerHealth, setShowServerHealth] = useState(false);
 
   // Maximum number of retries for operations
   const MAX_RETRIES = 3;
@@ -278,6 +419,7 @@ function FileTransferClient() {
   useEffect(() => {
     if (connected) {
       connectWebSocket();
+      fetchServerHealth();
     }
     
     return () => {
@@ -319,8 +461,30 @@ function FileTransferClient() {
   // Handle search
   const handleSearch = useCallback((query) => {
     setSearchQuery(query);
-    applyFileFilter(files, query);
-  }, [applyFileFilter, files]);
+    
+    if (!query) {
+      setShowSearchResults(false);
+      applyFileFilter(files, '');
+      return;
+    }
+    
+    setIsSearching(true);
+    
+    // Server-side search for more accurate results
+    sendCommand(`SEARCH ${query}`)
+      .then(response => {
+        setSearchResults(response);
+        setShowSearchResults(true);
+      })
+      .catch(error => {
+        console.error('Search error:', error);
+        // Fallback to client-side filtering
+        applyFileFilter(files, query);
+      })
+      .finally(() => {
+        setIsSearching(false);
+      });
+  }, [applyFileFilter, files, sendCommand]);
   
   // Connect to server
   const connect = useCallback(async (retry = 0) => {
@@ -351,7 +515,7 @@ function FileTransferClient() {
     } finally {
       setIsLoading(false);
     }
-  }, [server, port]);
+  }, [server, port, sendCommand]);
   
   // Disconnect from server
   const disconnect = useCallback(async () => {
@@ -373,15 +537,18 @@ function FileTransferClient() {
     setSelectedFile(null);
     setCurrentDirectory('');
     setStatus('Disconnected');
+    setServerHealth(null);
     
     // Clear cache on disconnect
     setFileCache({});
-  }, []);
+  }, [sendCommand]);
   
   // Send command to server with retry mechanism
   const sendCommand = useCallback(async (command, options = {}, retry = 0) => {
     try {
-      const url = `http://${server}:${port}/command`;
+      const queryParams = new URLSearchParams(options.params || {});
+      const url = `http://${server}:${port}/command${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      
       const fetchOptions = {
         method: 'POST',
         headers: {
@@ -389,12 +556,6 @@ function FileTransferClient() {
         },
         body: command,
       };
-      
-      // Add query parameters if provided
-      if (options.params) {
-        const queryParams = new URLSearchParams(options.params);
-        url += `?${queryParams.toString()}`;
-      }
       
       // Check if the response is in cache
       const cacheKey = `${command}_${JSON.stringify(options)}`;
@@ -488,6 +649,18 @@ function FileTransferClient() {
     }
   }, [connected, currentDirectory, sendCommand, searchQuery, applyFileFilter]);
   
+  // Fetch server health
+  const fetchServerHealth = useCallback(async () => {
+    if (!connected) return;
+    
+    try {
+      const health = await sendCommand('HEALTH');
+      setServerHealth(health);
+    } catch (error) {
+      console.error('Error fetching server health:', error);
+    }
+  }, [connected, sendCommand]);
+  
   // Handle file selection
   const handleSelectFile = useCallback((file) => {
     setSelectedFile(file);
@@ -496,7 +669,53 @@ function FileTransferClient() {
     if (file.type === 'directory') {
       setCurrentDirectory(file.path);
     }
-  }, []);
+    
+    // Fetch detailed metadata for the file
+    if (file.type === 'file') {
+      sendCommand(`METADATA ${file.path}`)
+        .then(metadata => {
+          setSelectedFile(metadata);
+        })
+        .catch(error => {
+          console.error('Error fetching metadata:', error);
+        });
+    }
+  }, [sendCommand]);
+  
+  // Handle breadcrumb navigation
+  const handleBreadcrumbNavigate = useCallback((path) => {
+    if (path === '') {
+      // Root directory
+      setCurrentDirectory('');
+      setSelectedPath('');
+      setSelectedFile(null);
+    } else {
+      // Navigate to directory
+      setCurrentDirectory(path);
+      setSelectedPath(path);
+      
+      // Find the directory in the file list
+      const findDirectory = (files, targetPath) => {
+        for (const file of files) {
+          if (file.path === targetPath) {
+            return file;
+          }
+          
+          if (file.children) {
+            const found = findDirectory(file.children, targetPath);
+            if (found) return found;
+          }
+        }
+        
+        return null;
+      };
+      
+      const dir = findDirectory(files, path);
+      if (dir) {
+        setSelectedFile(dir);
+      }
+    }
+  }, [files]);
   
   // Handle file download with compression options
   const handleGetFiles = useCallback(() => {
@@ -514,6 +733,11 @@ function FileTransferClient() {
     setCurrentOperation('GETALL');
     setShowSaveDialog(true);
   }, []);
+  
+  // Handle file version download
+  const handleGetVersion = useCallback((filePath, version) => {
+    window.location.href = `http://${server}:${port}/version?path=${encodeURIComponent(filePath)}&version=${version}`;
+  }, [server, port]);
   
   // Execute file download with progress tracking
   const executeFileDownload = useCallback(async () => {
@@ -590,10 +814,6 @@ function FileTransferClient() {
     setIsLoading(true);
     setUploadProgress(0);
     
-    // Create FormData
-    const formData = new FormData();
-    formData.append('file', file);
-    
     // Define upload path based on current directory
     const uploadPath = currentDirectory ? 
       `${currentDirectory}/${file.name}` : 
@@ -639,6 +859,44 @@ function FileTransferClient() {
     document.getElementById('file-upload').click();
   }, []);
   
+  // Toggle server health display
+  const toggleServerHealth = useCallback(() => {
+    setShowServerHealth(!showServerHealth);
+    
+    if (!showServerHealth) {
+      fetchServerHealth();
+    }
+  }, [showServerHealth, fetchServerHealth]);
+  
+  // Current directory content (considering search results)
+  const currentContent = useMemo(() => {
+    if (showSearchResults) {
+      return searchResults;
+    }
+    
+    if (currentDirectory === '') {
+      return files;
+    }
+    
+    // Find current directory in files
+    const findDirectory = (files, path) => {
+      for (const file of files) {
+        if (file.path === path) {
+          return file.children || [];
+        }
+        
+        if (file.children) {
+          const found = findDirectory(file.children, path);
+          if (found.length > 0) return found;
+        }
+      }
+      
+      return [];
+    };
+    
+    return findDirectory(files, currentDirectory);
+  }, [files, currentDirectory, showSearchResults, searchResults]);
+  
   // Component render
   return (
     <div className="app-container">
@@ -674,6 +932,16 @@ function FileTransferClient() {
           >
             {connected ? 'Disconnect' : 'Connect'}
           </button>
+          
+          {connected && (
+            <button
+              className="health-button"
+              onClick={toggleServerHealth}
+              title="Server Health"
+            >
+              📊
+            </button>
+          )}
         </div>
       </div>
       
@@ -697,6 +965,14 @@ function FileTransferClient() {
           </div>
         )}
       </div>
+      
+      {/* Server Health Panel */}
+      {showServerHealth && serverHealth && (
+        <ServerHealthPanel 
+          health={serverHealth} 
+          onRefreshHealth={fetchServerHealth} 
+        />
+      )}
       
       {/* Main Content */}
       {connected && (
@@ -740,7 +1016,15 @@ function FileTransferClient() {
           </div>
           
           {/* Search Box */}
-          <SearchBox onSearch={handleSearch} />
+          <SearchBox onSearch={handleSearch} isSearching={isSearching} />
+          
+          {/* Breadcrumb Navigation */}
+          {currentDirectory && (
+            <BreadcrumbNav 
+              path={currentDirectory} 
+              onNavigate={handleBreadcrumbNavigate} 
+            />
+          )}
           
           {/* Main Container */}
           <div className="file-explorer">
@@ -757,9 +1041,14 @@ function FileTransferClient() {
             {/* File List / Search Results */}
             <div className="file-list-container">
               <h3>{showSearchResults ? 'Search Results' : 'Files'}</h3>
-              {showSearchResults ? (
+              
+              {currentContent.length === 0 ? (
+                <div className="empty-state">
+                  {showSearchResults ? 'No search results found' : 'No files in this directory'}
+                </div>
+              ) : (
                 <VirtualList
-                  items={searchResults}
+                  items={currentContent}
                   itemHeight={40}
                   height={400}
                   renderItem={(item) => (
@@ -772,46 +1061,21 @@ function FileTransferClient() {
                         {item.type === 'directory' ? '📁' : '📄'}
                       </span>
                       <span className="file-name">{item.name}</span>
-                      <span className="file-path">{item.path}</span>
+                      {showSearchResults && (
+                        <span className="file-path">{item.path}</span>
+                      )}
                     </div>
                   )}
                 />
-              ) : currentDirectory ? (
-                <div className="current-directory-files">
-                  {files.find(f => f.path === currentDirectory)?.children?.map(file => (
-                    <div 
-                      key={file.path} 
-                      className={`file-item ${selectedPath === file.path ? 'selected' : ''}`}
-                      onClick={() => handleSelectFile(file)}
-                    >
-                      <span className="file-icon">
-                        {file.type === 'directory' ? '📁' : '📄'}
-                      </span>
-                      <span className="file-name">{file.name}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="root-files">
-                  {files.map(file => (
-                    <div 
-                      key={file.path} 
-                      className={`file-item ${selectedPath === file.path ? 'selected' : ''}`}
-                      onClick={() => handleSelectFile(file)}
-                    >
-                      <span className="file-icon">
-                        {file.type === 'directory' ? '📁' : '📄'}
-                      </span>
-                      <span className="file-name">{file.name}</span>
-                    </div>
-                  ))}
-                </div>
               )}
             </div>
             
             {/* File Metadata Panel */}
             <div className="details-panel">
-              <FileMetadataPanel file={selectedFile} />
+              <FileMetadataPanel 
+                file={selectedFile}
+                onGetVersion={handleGetVersion}
+              />
             </div>
           </div>
         </div>
@@ -990,6 +1254,17 @@ button:disabled {
   background-color: #dde4e6;
 }
 
+.health-button {
+  background-color: #27ae60;
+  color: white;
+  padding: 8px;
+  min-width: 40px;
+}
+
+.health-button:hover:not(:disabled) {
+  background-color: #219653;
+}
+
 .action-button {
   background-color: #3498db;
   color: white;
@@ -1139,6 +1414,15 @@ button:disabled {
   margin-left: 10px;
 }
 
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #7f8c8d;
+  font-style: italic;
+}
+
 .metadata-panel {
   padding: 15px;
 }
@@ -1165,13 +1449,23 @@ button:disabled {
 .version-item {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 8px 0;
   border-bottom: 1px solid #eee;
   font-size: 13px;
 }
 
+.version-download-btn {
+  font-size: 12px;
+  padding: 2px 8px;
+  background-color: #3498db;
+  color: white;
+  border-radius: 3px;
+}
+
 .search-box {
   margin-bottom: 15px;
+  position: relative;
 }
 
 .search-box input {
@@ -1188,12 +1482,11 @@ button:disabled {
   border-color: #3498db;
 }
 
-.virtual-list-container {
-  border: 1px solid #eee;
-  border-radius: 4px;
-}
-
-.loader {
+.search-loader {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   border: 2px solid #f3f3f3;
   border-top: 2px solid #3498db;
   border-radius: 50%;
@@ -1202,9 +1495,108 @@ button:disabled {
   animation: spin 1s linear infinite;
 }
 
+.breadcrumb-nav {
+  margin-bottom: 15px;
+  padding: 8px 0;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.breadcrumb-item {
+  display: inline-block;
+  padding: 0 8px;
+  cursor: pointer;
+  color: #3498db;
+}
+
+.breadcrumb-item:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-separator {
+  color: #7f8c8d;
+}
+
+.virtual-list-container {
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.server-health-panel {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.health-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.health-header h3 {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.refresh-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #3498db;
+  padding: 0;
+}
+
+.health-info {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.health-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.health-item > span:first-child {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.status-indicator {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.status-up {
+  background-color: #e6f7e6;
+  color: #27ae60;
+}
+
+.status-down {
+  background-color: #ffe6e6;
+  color: #e74c3c;
+}
+
+.progress-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .progress-bar {
-  height: 18px;
-  width: 150px;
+  height: 8px;
+  flex: 1;
   background-color: #f1f1f1;
   border-radius: 4px;
   position: relative;
@@ -1217,18 +1609,31 @@ button:disabled {
   transition: width 0.3s ease;
 }
 
-.progress-bar span {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.health-details {
+  grid-column: span 2;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
   font-size: 12px;
-  color: #fff;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  color: #7f8c8d;
+}
+
+.loader {
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+}
+
+.hash {
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
 }
 
 .modal-overlay {
